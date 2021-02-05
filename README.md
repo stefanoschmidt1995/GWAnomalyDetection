@@ -25,8 +25,8 @@ A lot of things to do:
   * Add here
   
 ## Authors
-+ Melissa López Portilla [m.lopez@uu.nl](mailto:m.lopez@uu.nl]
-+ Stefano Schmidt [s.schmidt@uu.nl](mailto:s.schmidt@uu.nl]
++ Melissa López Portilla [m.lopez@uu.nl](mailto:m.lopez@uu.nl)
++ Stefano Schmidt [s.schmidt@uu.nl](mailto:s.schmidt@uu.nl)
 
 
 
