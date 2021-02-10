@@ -12,6 +12,8 @@ import matplotlib.patches as mpatches
 import time
 import matplotlib.pyplot as plt
 import scipy.signal as sig
+from scipy.io import wavfile
+
 
 import mlgw.GW_generator as gen
 g = gen.GW_generator()
@@ -33,11 +35,17 @@ def data_LL(data, prediction):
 	#loading data and solving mesa with train data
 
 datafile = "H-H1_GWOSC_4KHZ_R1-1126259447-32.txt.gz"
-
 srate = 4096.#*4.
-data = np.loadtxt(datafile)
+#data = np.loadtxt(datafile)
 
-print("Data length: ", len(data)/srate)
+#srate, data = wavfile.read("test.wav")
+
+data = np.loadtxt('test.txt').T
+srate = 1./(data[0,1]-data[0,0])
+data = data[1,:]
+
+
+print("Data length: ", len(data)/srate, srate)
 #data = np.loadtxt(datafile)[::4]
 dt = 1./srate
 times = np.linspace(0, len(data)*dt, len(data))
@@ -45,22 +53,26 @@ times = np.linspace(0, len(data)*dt, len(data))
 	#adding WF
 t_start = 0.
 t_merger = 28#1126259462.4-1126259447
-WF = g.get_WF([36,29,-0.1,0.2, 41000, 0.3, 2.435], times - t_merger)[0]
+WF = g.get_WF([36,29,-0.1,0.2, 410, 0.3, 2.435], times - t_merger)[0]
+#WF = 1e-20*np.cos(2*np.pi*700*times) #* np.exp(-np.square(times - t_merger))
 #WF = 1e-25*np.exp(-np.square(times - t_merger))
 
 #adding WF to the data
-data = data + WF #DEBUG: removed WF
+#data =  data + WF #DEBUG: removed WF
 
 #bandpassing the data
-(B,A) = sig.butter(4,[35/(.5*srate), 1350/(.5*srate)], btype='bandpass')#, fs = srate)
+(B,A) = sig.butter(4,[5/(.5*srate), 1350/(.5*srate)], btype='bandpass')#, fs = srate)
+#(B,A) = sig.butter(4, 500/(.5*srate), btype='lowpass')
 data_pass = sig.lfilter(B, A, data)
+#data_pass = data + WF #DEBUG: removed WF
 
 plt.figure()
 plt.title("Data vs filtered data")
 
 plt.plot(times,data)
-plt.plot(times,data_pass)
-plt.axvline(1126259462.4-1126259447, c = 'r')
+#plt.plot(times,data_pass)
+#plt.axvline(1126259462.4-1126259447, c = 'r')
+plt.axvline(t_merger, c = 'r')
 
 
 fig_PSDseries = plt.figure(2)
@@ -71,15 +83,16 @@ M = MESA()
 M.solve(data_pass)
 freq = np.linspace(1./times[-1], 0.5*srate,1000)
 spec = M.spectrum(1/srate,freq)
-ax_PSDseries.loglog(freq, np.abs(spec), c = 'b')
+ax_PSDseries.loglog(freq, np.abs(spec), c = 'b', label= "bandpass")
 M.solve(data)
 freq = np.linspace(1./times[-1], 0.5*srate,1000)
 spec = M.spectrum(1/srate,freq)
-ax_PSDseries.loglog(freq, spec, c = 'r')
-
+ax_PSDseries.loglog(freq, spec, c = 'r', label= "standard data")
+plt.legend()
 plt.show()
 
-data = data_pass
+#data = data_pass
+#data = data + WF #DEBUG: removed WF
 
 T  = 10 #T used for training
 
