@@ -8,6 +8,8 @@
 
 * Very interesting NN to predict the sunspots data: see the [website](https://aditya-bhattacharya.net/2020/07/11/time-series-tips-and-tricks/2/). Useful for an inspiration about the LSTM.
 
+* Interesting survey on Outlier Detection for Temporal Data: see [here](https://www.microsoft.com/en-us/research/wp-content/uploads/2014/01/gupta14_tkde.pdf):
+
 * Entropy-based method: when the entropy of a time series increases, this might mean that an decrease in entropy...
 This [paper](https://link.springer.com/article/10.1007/s10115-017-1067-8) is about the topic and might serve our purpose: not very interesting (probably beacuse I did not understand it?).
 
