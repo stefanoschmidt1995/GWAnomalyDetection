@@ -1,7 +1,9 @@
 ## Some notes for GWAnomalyDetection
 
 * Currently, MESA algorithm does fairly good predictions but doesn't get any signal (unless the signal has a very different frequency than the noise)... We might need:
+
 	i) more accurate prediction scheme (LSTM might be better)
+	
 	ii) More sophisticated analysis of the residuals 
 
 * Clustering of the residuals: the time series of the errors can be reduced in dimensionality and are clustered with DBSCAN (or other unsupervised algorithm). If there is any outlier, we found an anomaly!
