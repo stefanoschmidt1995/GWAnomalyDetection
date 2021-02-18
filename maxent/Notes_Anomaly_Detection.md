@@ -22,3 +22,18 @@ This [paper](https://link.springer.com/article/10.1007/s10115-017-1067-8) is abo
 * Collaboration [paper](https://arxiv.org/abs/1908.11170) on data analysis: A guide to LIGO-Virgo detector noise and extraction of transient gravitational-wave signals
 
 
+## Signal processing interesting readings:
+
+* Signal processing for dummies by Elena Cuoco (blog): https://getpocket.com/read/3258180325
+
+* Justing's master thesis: https://matheo.uliege.be/bitstream/2268.2/9211/4/Master_thesis_Janquart.pdf
+
+* Factors that impact the PSD (blog): https://sapienlabs.org/factors-that-impact-power-spectrum-density-estimation/
+
+* Understanding the windowing process (blog): https://download.ni.com/evaluation/pxi/Understanding%20FFTs%20and%20Windowing.pdf
+
+* Digital Signal processing (book): https://doc.lagout.org/science/0_Computer%20Science/9_Others/1_Digital%20Signal%20Processing/The%20Scientist%20and%20Engineer%27s%20Guide%20to%20DSP.pdf
+
+* A guide to LIGO-Virgo detector noise (paper): https://arxiv.org/pdf/1908.11170.pdf
+
+* Empirical mode decomposition (Mathlab code): https://getpocket.com/read/98390696 
