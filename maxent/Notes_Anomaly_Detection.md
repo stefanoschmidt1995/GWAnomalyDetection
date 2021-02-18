@@ -17,11 +17,6 @@ This [paper](https://link.springer.com/article/10.1007/s10115-017-1067-8) is abo
 
 * Dynamic time warping (DTW) is a popular technique for measuring the distance between two time series with temporal deformations: might be interesting to train the LSTM and my precessing mlgw. See on [Wikipedia](https://en.wikipedia.org/wiki/Dynamic_time_warping) for more.
 
-* Justin's [thesis](https://matheo.uliege.be/handle/2268.2/9211): overview of data analysis techniques
-
-* Collaboration [paper](https://arxiv.org/abs/1908.11170) on data analysis: A guide to LIGO-Virgo detector noise and extraction of transient gravitational-wave signals
-
-
 ## Signal processing interesting readings:
 
 * Signal processing for dummies by Elena Cuoco (blog): https://getpocket.com/read/3258180325
