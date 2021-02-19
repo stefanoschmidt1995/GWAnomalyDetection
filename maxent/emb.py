@@ -12,8 +12,7 @@ g = gen.GW_generator()
 import emd #nice package for emd: pip install emd
 
 #############
-#	This is a small snippet to illustrate how Empirical Mode Decomposition (EMB) can be used as pass band filter for the low frequencies.
-#	It seems reasonably robust and it allows to cut lower frequencies by "whitening" them (see the PSD in the plot below)
+#	This is a small snippet to illustrate how Empirical Mode Decomposition (EMB) can be used to dump lower frequencies, acting effectively as a whithener (see the PSD in the plot below)
 #	It decomposes the signal in different components, each with a signal composed by increasing frequencies
 #	The highest frequencies component is two orders of magnitude lower than the actual strain and has a "flat" PSD
 #	Anomalies can be detected there!!
@@ -73,6 +72,7 @@ plt.title("PSD of the EMD mode with highest frequency vs PSD of data")
 ax.loglog(freq, spec_data, label= "data")
 ax.loglog(freq, spec_imf, label= "1st EMD")
 plt.legend()
+fig.savefig("PSD.pdf")
 
 fig, ax = plt.subplots(imf.shape[1]+1,1, sharex = True, figsize=(16,8) )
 fig.suptitle("Data + the {} components of Empirical Mode Decomposition".format(imf.shape[1]))
@@ -88,6 +88,7 @@ for i, a_ in enumerate(ax):
 	a_.plot(times, imf[:,i-1])
 
 fig.tight_layout()
+fig.savefig("EMD_modes.pdf")
 plt.show()
 
 
