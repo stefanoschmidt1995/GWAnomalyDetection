@@ -36,13 +36,14 @@ def data_LL(data, prediction):
 
 datafile = "H-H1_GWOSC_4KHZ_R1-1126259447-32.txt.gz"
 srate = 4096.#*4.
-#data = np.loadtxt(datafile)
+data = np.loadtxt(datafile)
 
 #srate, data = wavfile.read("test.wav")
+#data = data[:35*srate]
 
-data = np.loadtxt('test.txt').T
-srate = 1./(data[0,1]-data[0,0])
-data = data[1,:]
+#data = np.loadtxt('test.txt').T
+#srate = 1./(data[0,1]-data[0,0])
+#data = data[1,:]
 
 
 print("Data length: ", len(data)/srate, srate)
@@ -52,47 +53,67 @@ times = np.linspace(0, len(data)*dt, len(data))
 
 	#adding WF
 t_start = 0.
-t_merger = 28#1126259462.4-1126259447
-WF = g.get_WF([36,29,-0.1,0.2, 410, 0.3, 2.435], times - t_merger)[0]
+t_merger = 26#1126259462.4-1126259447
+WF = np.zeros(times.shape)
+WF = g.get_WF([36,29,-0.1,0.2, 41.0*2, 0.3, 2.435], times - t_merger)[0]
 #WF = 1e-20*np.cos(2*np.pi*700*times) #* np.exp(-np.square(times - t_merger))
-#WF = 1e-25*np.exp(-np.square(times - t_merger))
+#WF = 1e-4*np.exp(-np.square(times - t_merger))
 
 #adding WF to the data
-#data =  data + WF #DEBUG: removed WF
+data =  data + WF #DEBUG: removed WF
+#plt.plot(times,data)
+#plt.show()
 
 #bandpassing the data
-(B,A) = sig.butter(4,[5/(.5*srate), 1350/(.5*srate)], btype='bandpass')#, fs = srate)
-#(B,A) = sig.butter(4, 500/(.5*srate), btype='lowpass')
-data_pass = sig.lfilter(B, A, data)
+(B,A) = sig.butter(5,[20/(.5*srate), 1024/(.5*srate)], btype='band')#, fs = srate)
+#(B,A) = sig.butter(4, 1500/(.5*srate), btype='lowpass')
+#data_pass = sig.lfilter(B, A, data)
+data_pass = sig.filtfilt(B, A, data)
 #data_pass = data + WF #DEBUG: removed WF
 
-plt.figure()
-plt.title("Data vs filtered data")
+if False: #plot bandpassing
+	plt.figure()
+	plt.title("Data vs filtered data")
 
-plt.plot(times,data)
-#plt.plot(times,data_pass)
-#plt.axvline(1126259462.4-1126259447, c = 'r')
-plt.axvline(t_merger, c = 'r')
+	plt.plot(times,data)
+	plt.plot(times,data_pass)
+	#plt.axvline(1126259462.4-1126259447, c = 'r')
+	plt.axvline(t_merger, c = 'r')
 
 
-fig_PSDseries = plt.figure(2)
-ax_PSDseries  = fig_PSDseries.add_subplot(111)
-ax_PSDseries.set_ylabel("PSD")
-ax_PSDseries.set_yscale('log')
-M = MESA()
-M.solve(data_pass)
-freq = np.linspace(1./times[-1], 0.5*srate,1000)
-spec = M.spectrum(1/srate,freq)
-ax_PSDseries.loglog(freq, np.abs(spec), c = 'b', label= "bandpass")
-M.solve(data)
-freq = np.linspace(1./times[-1], 0.5*srate,1000)
-spec = M.spectrum(1/srate,freq)
-ax_PSDseries.loglog(freq, spec, c = 'r', label= "standard data")
-plt.legend()
-plt.show()
+	fig_PSDseries = plt.figure(2)
+	ax_PSDseries  = fig_PSDseries.add_subplot(111)
+	ax_PSDseries.set_ylabel("PSD")
+	ax_PSDseries.set_yscale('log')
+	M = MESA()
+	M.solve(data_pass, early_stop = True, method = 'Standard')
 
-#data = data_pass
-#data = data + WF #DEBUG: removed WF
+	freq = np.linspace(1./times[-1], 0.5*srate,1000)
+	spec = M.spectrum(1/srate,freq)
+	ax_PSDseries.loglog(freq, np.abs(spec), c = 'b', label= "bandpass")
+	M.solve(data, method = 'Standard')
+	freq = np.linspace(1./times[-1], 0.5*srate,1000)
+	spec = M.spectrum(1/srate,freq)
+	ax_PSDseries.loglog(freq, spec, c = 'r', label= "standard data")
+	plt.legend()
+	plt.show()
+
+data = data_pass
+#data = data + WF
+
+#downsampling
+if True:
+	plt.figure(100)
+	plt.plot(times, data)
+	data = sig.decimate(data, 2)
+	print(times)
+	times = sig.decimate(times, 2)
+	WF = sig.decimate(WF, 2)
+	print(times)
+	srate = srate/2.
+	dt = 1./srate
+	plt.plot(times, data)
+	#plt.show()
 
 T  = 10 #T used for training
 
@@ -103,6 +124,7 @@ N = data.shape[0]
 M = MESA()
 start = time.perf_counter()
 P, ak, _ = M.solve(train_data, method = "Standard", optimisation_method = "FPE", m = int(2*N/(2*np.log(N))))
+print(ak, P)
 
 	#starting "pipeline"
 time_step = 1500/srate # 1 seconds of data
@@ -126,7 +148,6 @@ ax_PSDseries.set_ylabel("PSD")
 ax_PSDseries.set_yscale('log')
 freq = np.linspace(1./T, 0.5*srate,1000)
 spec = M.spectrum(1/srate,freq)
-print(spec)
 ax_PSDseries.loglog(freq, spec)
 
 ax_timeseries.plot(times[id_start-id_step:id_start], train_data[-id_step:], linewidth=1., color='r', zorder = 3)
@@ -139,11 +160,13 @@ PSD_baseline = M.spectrum(1./srate, f_grid)
 
 #ax_timeseries.plot(times, data, linewidth=1.5, color='g', zorder = 3, label = "Data")
 ax_timeseries.axvline(15.615353510692678)
-ax_WF.axvline(15.615353510692678)
+#ax_WF.axvline(15.615353510692678)
+ax_WF.axvline(t_merger)
+ax_timeseries.axvline(t_merger)
 
 T_max = len(data)*dt
 
-for i, id_ in enumerate(range(id_start-id_step, int(T_max * srate-id_step) , id_step)):
+for i, id_ in enumerate(range(id_start-id_step, int(T_max * srate-id_step) , id_step)): #problem here with missing gaps (or something weird related...)
 	sys.stderr.write("\rAnalysing batch {} of {}: t in [{},{}]".format(i+1, 
 			int((int(T_max * srate-id_step)- (id_start-id_step))/id_step +0.5),
 			times[id_],times[id_+id_step]))
