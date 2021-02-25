@@ -38,7 +38,7 @@ print("Loaded {}s of data sampled @ {}Hz".format(len(data)/srate,srate))
 times = np.linspace(0,len(data)/srate, len(data))
 
 	#setting up injection
-t_merger = 75.
+t_merger = 25.
 WF = g.get_WF([36,29,-0.1,0.2, 41.0*10., 0.3, 2.435], times - t_merger)[0]
 #WF = np.max(WF)*np.exp(-np.square(times - t_merger)) #for gaussian injection
 
@@ -48,6 +48,11 @@ WF = WF*1e18
 
 data = data+WF
 
+	#For bandpassing: useful?
+if False:
+	(B,A) = sig.butter(5,[20/(.5*srate), 1024/(.5*srate)], btype='band')#, fs = srate)
+	data_pass = sig.filtfilt(B, A, data)
+	data = data_pass
 
 	#For downsampling... It is a good idea to do so: all the high frequency are gathered in a single mode
 if True:
@@ -64,8 +69,8 @@ if True:
 imf = emd.sift.sift(data, sift_thresh = 1e-8)
 
 	#removing borders of the data: edge effects can be quite heavy in the high frequecies
-T = 80
-offset = 5000
+T = 30
+offset = 500
 data = data[offset:int(T*srate)+offset]
 times = times[offset:int(T*srate)+offset]
 WF = WF[offset:int(T*srate)+offset]
@@ -86,7 +91,7 @@ spec_WF = M.spectrum(1/srate,freq)
 
 	#running pipeline
 data_pipeline = imf[:,0]
-AnomalyDetection_pipeline(data_pipeline, srate, T_train = 60., N_step = 200, plot = True, injection = WF)
+AnomalyDetection_pipeline(data_pipeline, srate, T_train = 10., N_step = 200, plot = True, injection = WF)
 
 	#plotting everything
 	#In the order 0 mode, you can see the chirp of the injected signal!! 
@@ -104,7 +109,8 @@ fig.suptitle("Data + the {} components of Empirical Mode Decomposition".format(i
 
 for i, a_ in enumerate(ax):
 	if i < 20:
-		a_.plot(times, WF, c = 'k')
+		pass
+		#a_.plot(times, WF, c = 'k')
 	if i ==0:
 		#a_.set_title("Data")
 		res = np.sum(imf, axis =1)
