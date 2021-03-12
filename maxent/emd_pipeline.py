@@ -15,7 +15,7 @@ g = gen.GW_generator()
 import emd #nice package for emd: pip install emd
 
 #############
-#	This is a small snippet to illustrate how Empirical Mode Decomposition (EMB) can be used to dump lower frequencies, acting effectively as a whithener (see the PSD in the plot below)
+#	This is a small snippet to illustrate how Empirical Mode Decomposition (EMD) can be used to dump lower frequencies, acting effectively as a whithener (see the PSD in the plot below)
 #	It decomposes the signal in different components, each with a signal composed by increasing frequencies
 #	The highest frequencies component is two orders of magnitude lower than the actual strain and has a "flat" PSD
 #	Anomalies can be detected there!!
@@ -28,8 +28,8 @@ import emd #nice package for emd: pip install emd
 
 
 	#loading strain data
-#datafile = "H-H1_GWOSC_4KHZ_R1-1126259447-32.txt.gz"
-datafile = "H-H1_GWOSC_4KHZ_R1-1126257415-100.txt.gz"
+#datafile = "data/H-H1_GWOSC_4KHZ_R1-1126259447-32.txt.gz"
+datafile = "data/H-H1_GWOSC_4KHZ_R1-1126257415-100.txt.gz"
 srate = 4096.#*4.
 #data = np.loadtxt(datafile)
 data = np.squeeze(pd.read_csv(datafile, skiprows =3))
@@ -46,7 +46,7 @@ WF = g.get_WF([36,29,-0.1,0.2, 41.0*10., 0.3, 2.435], times - t_merger)[0]
 data = data*1e18
 WF = WF*1e18
 
-data = data+WF
+#data = data+WF
 
 	#For bandpassing: useful?
 if False:
@@ -81,7 +81,7 @@ print("Data are {}s long".format(len(data)/srate))
 	#computing PSD of the high frequency residuals
 	#computing the PSD of the signal
 M = MESA()
-M.solve(imf[:,0], method = 'Standard')
+M.solve(imf[:,0], method = 'Standard', optimisation_method = 'CAT')
 freq = np.linspace(1./times[-1], 0.5*srate,1000) #vector for evaluating the spectrum
 spec_imf = M.spectrum(1/srate,freq)
 M.solve(data, method = 'Standard')
@@ -91,7 +91,7 @@ spec_WF = M.spectrum(1/srate,freq)
 
 	#running pipeline
 data_pipeline = imf[:,0]
-AnomalyDetection_pipeline(data_pipeline, srate, T_train = 10., N_step = 200, plot = True, injection = WF)
+AnomalyDetection_pipeline(data_pipeline, srate, T_train = 10., N_step = 20000, outfile = None, plot = True, injection = WF)
 
 	#plotting everything
 	#In the order 0 mode, you can see the chirp of the injected signal!! 
