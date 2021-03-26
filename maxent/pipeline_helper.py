@@ -43,11 +43,13 @@ def do_emd(data, emd_type = 'PyEMD', outfile = None, trim_borders = 0, times = N
 		emd_model = EMD()
 		imf = emd_model(data).T #(N,N_emd)
 
-	imf = imf[trim_borders:imf.shape[0]-trim_borders,:]
+	if isinstance(trim_borders,int):
+		trim_borders = (trim_borders,trim_borders)
+	imf = imf[trim_borders[0]:imf.shape[0]-trim_borders[1],:]
 	ret_list = [imf]
-	if trim_borders >0: ret_list.append(data[trim_borders:data.shape[0]-trim_borders])
-	if trim_borders >0 and times is not None: ret_list.append(times[trim_borders:times.shape[0]-trim_borders])
-	if trim_borders >0 and WF is not None: ret_list.append(WF[trim_borders:WF.shape[0]-trim_borders])
+	if trim_borders != (0,0): ret_list.append(data[trim_borders[0]:data.shape[0]-trim_borders[1]])
+	if trim_borders != (0,0) and times is not None: ret_list.append(times[trim_borders[0]:times.shape[0]-trim_borders[1]])
+	if trim_borders != (0,0) and WF is not None: ret_list.append(WF[trim_borders[0]:WF.shape[0]-trim_borders[1]])
 	
 	if isinstance(outfile, str):
 		if not isinstance(header, str): header = 'IMf modes: shape {}'.format(imf.shape)

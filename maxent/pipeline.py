@@ -149,7 +149,10 @@ def gather_LLs(infolder, injs):
 			ids_ = np.where(np.logical_and(t_diff < np.abs(t_diff[0]-t_diff[1]), t_diff >0))[0]
 			print(t, t_start[ids_])
 			flags[ids_] = 1.
-			theta[ids_] = injs[i]['theta']
+			try:
+				theta[ids_] = injs[i]['theta']
+			except KeyError:
+				theta[ids_] = np.zeros((7,))
 			try:
 				if np.abs(t_diff[ids_+1]) > np.abs(t_diff[ids_-1]) and ids_!=0:
 					flags[ids_-1] = .5
