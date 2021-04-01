@@ -3,6 +3,9 @@ Given a time series, it computes the PSD and start forecasting and measuring the
 It plots a number of quantieties
 """
 
+#TODO: realistic SNR computation
+#TODO: improve forecasting method: that's probably key to improving performances
+
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
@@ -10,6 +13,7 @@ sys.path.insert(0,'../../Maximum-Entropy-Spectrum/')
 from memspectrum import MESA
 import pickle
 import os
+import scipy.spatial
 
 from mlgw.ML_routines import PCA_model
 
@@ -129,80 +133,102 @@ def gather_LLs(infolder, injs):
 	"Gathers together a number of LL series and state whether in each of them an injection is present. It performs PCA and plots"
 
 	if not infolder.endswith('/'): infolder +='/'
-	LL_files = os.listdir(infolder) #(N_batches,D)
+	LL_files = os.listdir(infolder) 
 	LL_list = []
-	flag_list = []
-	theta_list = []
+	times_list = []
 	
 	for LL_file in LL_files:
 		with open(infolder+LL_file, 'rb') as f:
 			LL_dict = pickle.load(f)
 
-		flags = np.zeros((LL_dict['LL'].shape[0],))
-		theta = np.zeros((LL_dict['LL'].shape[0],7))
-		
-			#assigning triggers
-		t_start = LL_dict['t_start']
-		inj_time_list = np.array([inj['time'] +float(inj['GPS'] -LL_dict['GPS']) for inj in injs])
-		for i, t in enumerate(inj_time_list):
-			t_diff = t - t_start
-			ids_ = np.where(np.logical_and(t_diff < np.abs(t_diff[0]-t_diff[1]), t_diff >0))[0]
-			print(t, t_start[ids_])
-			flags[ids_] = 1.
-			try:
-				theta[ids_] = injs[i]['theta']
-			except KeyError:
-				theta[ids_] = np.zeros((7,))
-			try:
-				if np.abs(t_diff[ids_+1]) > np.abs(t_diff[ids_-1]) and ids_!=0:
-					flags[ids_-1] = .5
-					theta[ids_-1] = injs[i]['theta']
-				else:
-					flags[ids_+1] = .5
-					theta[ids_+1] = injs[i]['theta']
-			except:
-				pass
-		
-		flag_list.append(flags)
+			#saving LLs_times and  LLs_timeseries
+		LLs_times = np.zeros((LL_dict['LL'].shape[0],), dtype = np.float128)
+		LLs_times = LL_dict['GPS'] + LL_dict['t_start']
+		times_list.append(LLs_times)
 		LL_list.append(LL_dict['LL'])
-		theta_list.append(theta)
 		
+		len_batch = LL_dict['LL'].shape[1] / LL_dict['srate'] 
+	
 	LLs = np.concatenate(LL_list, axis = 0) #(N,D)
-	flags = np.concatenate(flag_list)#(N,)
-	thetas = np.concatenate(theta_list,axis =0)
+	LLs_times = np.concatenate(times_list)#(N,)
+
+	trigger_times, triggers_ids, red_data = detect_outliers(LLs, LLs_times, threshold = -8, K_PCA = 3)
 	
-	print(LLs.shape, flags.shape)
+	injected_triggers_ids, detected_injs_ids = check_triggers(trigger_times, injs, len_batch *0.7 )
+
+	print("Injections statistics")
+	print("\tDetection/triggers: ", len(injected_triggers_ids)/len(triggers_ids))
+	print("\tDetected injections (%): ",len(np.unique(detected_injs_ids)),len(np.unique(detected_injs_ids))/len(injs))
+	print("\t# of injections: ", len(injs))
 	
-		#PCA part
-	model = PCA_model()
-	model.fit_model(LLs, K =2)
-	red_data = model.reduce_data(LLs) #ugly, you should divide things between train and test...
+	injected_ids, _ = check_triggers(LLs_times, injs, len_batch *0.97 )
+
+		#plotting: the injections are in red
+	plt.figure()
+	injs_bool_vector = np.zeros((red_data.shape[0],)).astype(bool)
+	injs_bool_vector.fill(False)
+	injs_bool_vector[injected_ids] = True
+		#plotting data and injections
+	plt.scatter(red_data[injs_bool_vector,0], red_data[injs_bool_vector,1], c = 'r', facecolors='none', cmap = 'cool', zorder =10)
+	plt.scatter(red_data[~injs_bool_vector,0], red_data[~injs_bool_vector,1], c = 'b', cmap = 'cool', zorder = 0)
+		#plotting triggers
+	plt.scatter(red_data[triggers_ids,0], red_data[triggers_ids,1], c = 'y', marker = 'x', cmap = 'cool', zorder =10)
+
+
+		#plotting parameters
+	theta_injs = [inj['theta'] for inj in injs]
+	theta_injs = np.column_stack(theta_injs).T #(N_injs, 7)
+	print(injs[0]['theta'].shape,theta_injs.shape)
+	try:
+		SNR_injs = np.array([inj['SNR'] for inj in injs])
+	except:
+		SNR_injs = np.array([  np.dot(inj['WF'],inj['WF'])/1e-40 for inj in injs])
 	
 	plt.figure()
-	injs_ids = np.where(flags ==1)[0]
-	n_injs_ids = np.where(flags ==0.5)[0]
-	other_ids = np.where(flags ==0)[0]
-	plt.scatter(red_data[injs_ids,0], red_data[injs_ids,1], c = 'r', cmap = 'cool', zorder =10)
-	plt.scatter(red_data[n_injs_ids,0], red_data[n_injs_ids,1], c = 'g', cmap = 'cool', zorder =2)
-	plt.scatter(red_data[other_ids,0], red_data[other_ids,1], c = 'b', cmap = 'cool', zorder = 0)
+	plt.hist(SNR_injs)
+	plt.hist(SNR_injs[detected_injs_ids], label = 'detected')
 
-	np.savetxt('data/red_data.dat', np.concatenate([red_data, flags[:,None]] , axis = 1))
-
-		#creating a histogram
-	import scipy.spatial
-	ok_ids = np.concatenate([injs_ids])#,n_injs_ids])
-	dist = scipy.spatial.distance_matrix(red_data[ok_ids,:],red_data) #(M,N)
-	dist = np.mean( dist, axis = 1) #(M,) #distance of each injection from the rest
-	
 	plt.figure()
-	plt.scatter((thetas[ok_ids,0]+thetas[ok_ids,1])/thetas[ok_ids,4], dist)
-	plt.xlabel("M/R")
-	plt.ylabel("dist")
+	plt.scatter(theta_injs[:,0]+theta_injs[:,1], theta_injs[:,4], c= 'b')
+	plt.scatter(theta_injs[detected_injs_ids,0]+theta_injs[detected_injs_ids,1], theta_injs[detected_injs_ids,4], marker = 'x', c = 'r')
 
-	
+	#np.savetxt('data/red_data.dat', np.concatenate([red_data, injs_bool_vector[:,None]] , axis = 1))
+
 	return
+
+def detect_outliers(LLs_timeseries, GPS_timeseries, threshold = 4, K_PCA = 2):
+	"Detect eventual outliers with PCA and launch triggers at the outliers found."
+	model = PCA_model()
+	model.fit_model(LLs_timeseries, K = K_PCA) #(N,D)
 	
-def detect_outliers(infile, injs = None):
+		#ugly, you should divide things between train and test...
+	red_data = model.reduce_data(LLs_timeseries) #(N,K)
+	
+		#distance between others
+		#computing 25-75 percentile
+	percentile = np.percentile(red_data, [15,85], axis = 0) #(2,K_PCA)
+	normal = np.logical_and(red_data>percentile[0,:], red_data<percentile[1,:])# (N,K_PCA)
+	normal = np.prod(normal, axis = 1).astype(bool)
+	
+	print("Len normal data", len(red_data[normal]))
+	
+	scores = scipy.spatial.distance_matrix(red_data, red_data[normal]) #(N,N)
+	scores = np.log(np.mean(np.square(scores), axis = 1))
+	
+	ids_scores = np.where(scores>threshold)
+	
+	if False:
+		plt.scatter(red_data[:,0],red_data[:,1], c= scores, zorder = 1)
+		plt.colorbar()
+		plt.scatter(red_data[ids_scores,0],red_data[ids_scores,1], c = 'r', zorder = 10)
+		#plt.scatter(*red_data[normal].T	, c ='r', zorder = 0)
+		
+		plt.show()
+	
+	return GPS_timeseries[ids_scores], np.array(range(red_data.shape[0]))[ids_scores], red_data #trigger times and their ids
+	
+
+def detect_outliers_old(infile, injs = None):
 	"Reduce the dimensionality of the LL series and try outliers detection with clustering"
 
 	with open(infile, 'rb') as f:
@@ -265,7 +291,20 @@ def detect_outliers(infile, injs = None):
 		plt.figure()
 		plt.scatter(t_start, red_data[:,1], c = colors, cmap = 'cool', zorder = 0)	
 		plt.xlabel("2nd PCA")
+
+def check_triggers(trigger_times, injs, threshold):
+	"Given a list of GPS times for some triggers, it computes whether each trigger time matches any injection time within a threshold"
+	injs_times = np.array([inj['time'] +np.array(inj['GPS'], dtype = np.float128) for inj in injs], dtype = np.float128) #(N_injs,)
+
+	print(trigger_times.shape, injs_times.shape)
+
+	deltaTs = scipy.spatial.distance_matrix(trigger_times[:,None], injs_times[:,None]) #(N,N_injs)
 	
+	ids_triggers, ids_injs = np.where(np.abs(deltaTs)<threshold)
+	
+	print(deltaTs.shape, ids_triggers, ids_injs)
+	
+	return ids_triggers, ids_injs	
 	
 	
 	

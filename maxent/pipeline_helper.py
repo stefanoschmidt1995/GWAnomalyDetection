@@ -9,6 +9,7 @@ from pipeline import *
 import scipy.signal as sig
 import pandas as pd
 import pickle
+import scipy.spatial
 
 import mlgw.GW_generator as gen
 
@@ -40,7 +41,7 @@ def do_emd(data, emd_type = 'PyEMD', outfile = None, trim_borders = 0, times = N
 	if emd_type == 'emd':
 		imf = emd.sift.sift(data, sift_thresh = 1e-8)
 	if emd_type == 'PyEMD':
-		emd_model = EMD()
+		emd_model = EMD(splinekind = 'linear', kwargs = {'extrema_detection':'parabol'})
 		imf = emd_model(data).T #(N,N_emd)
 
 	if isinstance(trim_borders,int):
@@ -108,6 +109,7 @@ def create_injection_list(N_inj, srate, start_GPS, end_GPS, theta_range = [[10,1
 		inj['GPS'] = int(start_GPS)
 		inj['time'] = np.random.uniform(.3, float(end_GPS-start_GPS))
 		inj['WF'] = WF
+		inj['SNR'] = np.dot(WF,WF)*np.diff(t_grid)[1]/len(WF)
 		inj_list.append(inj)
 	return inj_list
 		
@@ -127,7 +129,7 @@ def split_data(indata, outfolder, srate, start_GPS, T_batch, T_overlap, injectio
 	"""
 	if not outfolder.endswith('/'): outfolder +='/'
 	if isinstance(indata,str):
-		data = np.squeeze(pd.read_csv(indata, skiprows =3))
+		data = np.squeeze(pd.read_csv(indata, skiprows =3).to_numpy())
 		print("Loaded data")
 	elif isinstance(indata,np.ndarray):
 		data = np.squeeze(indata)
@@ -275,6 +277,15 @@ def plot_cluster_data(infile):
 	print(false_pos, false_neg)
 	print(true_pos+false_neg)
 	print(true_neg+true_pos+false_pos+true_pos)
+	
+
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	

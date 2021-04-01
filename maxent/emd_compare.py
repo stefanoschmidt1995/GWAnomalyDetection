@@ -20,9 +20,11 @@ from pipeline_helper import *
 
 	#loading strain data
 datafile = "data/H-H1_GWOSC_4KHZ_R1-1126259447-32.txt.gz"
-#datafile = "data/H-H1_GWOSC_4KHZ_R1-1126257415-100.txt.gz"
+	#GW150914:	GPS time = 1126259462.4
+	#			Time in grid = 15.4
+
 srate = 4096.#*4.
-data = np.squeeze(pd.read_csv(datafile, skiprows =3))
+data = np.squeeze(pd.read_csv(datafile, skiprows =3).to_numpy())#[int(srate*10):int(srate*25)]
 #np.savetxt("H-H1_GWOSC_4KHZ_R1-1126257415-100.txt.gz", data[:int(100*srate)]) #for saving a short version of data
 print("Loaded {}s of data sampled @ {}Hz".format(len(data)/srate,srate))
 times = np.linspace(0,len(data)/srate, len(data))
@@ -47,16 +49,16 @@ if True:
 	srate, data, times, WF = downsample_data(4, srate, data, times, WF)
 
 	#doing Empirical Mode Decomposition
-imf = do_emd(data, 'emd')
+#imf = do_emd(data, 'emd')
 imf_bis = do_emd(data, 'PyEMD')
 
 print("Data are {}s long".format(len(data)/srate))
 
-plot_PSD_imf(imf,data, srate, None, 'std', 'plots')
+#plot_PSD_imf(imf,data, srate, None, 'std', 'plots')
 plot_PSD_imf(imf_bis,data, srate, None,'bis', 'plots')
 
-plot_imf(imf,data, 'std', 'plots')
-plot_imf(imf_bis, data,'bis', 'plots')
+#plot_imf(imf,data, 'std', 'plots', times = np.linspace(0,len(data)/srate,len(data)))
+plot_imf(imf_bis, data,'bis', 'plots', times = np.linspace(0,len(data)/srate,len(data)))
 
 plt.show()
 
