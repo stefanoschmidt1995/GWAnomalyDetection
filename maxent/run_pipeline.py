@@ -9,16 +9,17 @@ import mlgw.GW_generator as gen
 
 #TODO: the weak part is a slow emd decomposition: data should be divided in batches (~1000s) and analysed separately. This should be pretty natural...
 
-#injs = create_injection_list(30, 4096, 1126257415, 1126257415+100)
-#save_inj_list('data/injs.pkl', injs)
-injs = load_inj_list('data/injs.pkl')
-
-gather_LLs('data/data_LL/', injs)
-plt.show()
+if False:
+	injs = create_injection_list(30, 4096, 1126257415, 1126257415+100, datafile = 'data/H-H1_GWOSC_4KHZ_R1-1126257415-100.txt.gz')
+	save_inj_list('data/injs.pkl', injs)
+else:
+	injs = load_inj_list('data/injs.pkl')
+	gather_LLs('data/data_LL/', injs, LL_treshold = -11)
+	plt.show()
 
 print("Made injections")
 
-if False:
+if True:
 	split_data('data/H-H1_GWOSC_4KHZ_R1-1126257415-100.txt.gz', outfolder = 'data/data_emd',
 			 srate = 4096, start_GPS = 1126257415, T_batch = 30, T_overlap = 10, 
 			 injection_list = injs,
@@ -43,7 +44,7 @@ for f in emd_files:
 
 	#plt.show()
 
-gather_LLs('data/data_LL/', injs)
+gather_LLs('data/data_LL/', injs, LL_treshold = -.1)
 plt.show()
 
 

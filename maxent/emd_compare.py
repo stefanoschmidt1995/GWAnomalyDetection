@@ -38,7 +38,7 @@ WF = g.get_WF([36,29,-0.1,0.2, 41.0*10., 0.3, 2.435], times - t_merger)[0]
 data = data*1e18
 WF = WF*1e18
 
-data = data+WF
+#data = data+WF
 
 	#For bandpassing: useful?
 if False:
@@ -55,10 +55,11 @@ imf_bis = do_emd(data, 'PyEMD')
 print("Data are {}s long".format(len(data)/srate))
 
 #plot_PSD_imf(imf,data, srate, None, 'std', 'plots')
+plot_PSD_imf(None,data, srate, WF,'Data PSD', 'plots')
 plot_PSD_imf(imf_bis,data, srate, None,'bis', 'plots')
 
 #plot_imf(imf,data, 'std', 'plots', times = np.linspace(0,len(data)/srate,len(data)))
-plot_imf(imf_bis, data,'bis', 'plots', times = np.linspace(0,len(data)/srate,len(data)))
+plot_imf(imf_bis[:,:3], data,'bis', 'plots', times = np.linspace(0,len(data)/srate,len(data)))
 
 plt.show()
 

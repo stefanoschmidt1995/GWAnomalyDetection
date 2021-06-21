@@ -15,6 +15,8 @@ import pickle
 import os
 import scipy.spatial
 
+from pipeline_helper import *
+
 from mlgw.ML_routines import PCA_model
 
 def data_LL_gauss(data, prediction, std_dev = None):
@@ -48,13 +50,13 @@ def AnomalyDetection_pipeline(data, srate, T_train, N_step, outfile = None, plot
 
 	if plot:
 			#timeseries plot
-		fig_timeseries = plt.figure(0)
+		fig_timeseries = plt.figure()
 		ax_timeseries  = fig_timeseries.add_subplot(111)
 		ax_timeseries.set_ylabel("Strain")
 		ax_timeseries.plot(times[:id_start], train_data[:id_start], linewidth=1., color='r', zorder = 3) #plot train data
 
 			#LL series plot
-		fig_LLseries = plt.figure(1)
+		fig_LLseries = plt.figure()
 		if injection is not None:
 			ax_LLseries  = fig_LLseries.add_subplot(211)
 			ax_WF  = fig_LLseries.add_subplot(212)
@@ -129,7 +131,7 @@ def AnomalyDetection_pipeline(data, srate, T_train, N_step, outfile = None, plot
 	return LL_dict
 
 
-def gather_LLs(infolder, injs):
+def gather_LLs(infolder, injs, LL_treshold = -4):
 	"Gathers together a number of LL series and state whether in each of them an injection is present. It performs PCA and plots"
 
 	if not infolder.endswith('/'): infolder +='/'
@@ -152,16 +154,28 @@ def gather_LLs(infolder, injs):
 	LLs = np.concatenate(LL_list, axis = 0) #(N,D)
 	LLs_times = np.concatenate(times_list)#(N,)
 
-	trigger_times, triggers_ids, red_data = detect_outliers(LLs, LLs_times, threshold = -8, K_PCA = 3)
+	trigger_times, triggers_ids, red_data = detect_outliers(LLs, LLs_times, threshold = LL_treshold, K_PCA = 2)
+	print(triggers_ids, trigger_times)
 	
-	injected_triggers_ids, detected_injs_ids = check_triggers(trigger_times, injs, len_batch *0.7 )
+	if injs is None: #this is just for GW 150914... as an example
+		plt.figure()
+		plt.scatter(red_data[:,0], red_data[:,1], c= 'b')
+		deltaT = LLs_times[1]-LLs_times[0]
+		id_event = np.where(np.logical_and((1126259462.4-LLs_times)>0, (1126259462.4-LLs_times)<deltaT))
+		plt.scatter(red_data[id_event,0], red_data[id_event,1], c= 'r')
+		plt.xlabel('PCA 1')
+		plt.ylabel('PCA 2')
+		plt.show()
+	
+	injected_triggers_ids, detected_injs_ids = check_triggers(trigger_times, injs, len_batch *2. ) #here we find the injected WFs among the triggers
+	print(detected_injs_ids)
 
 	print("Injections statistics")
 	print("\tDetection/triggers: ", len(injected_triggers_ids)/len(triggers_ids))
 	print("\tDetected injections (%): ",len(np.unique(detected_injs_ids)),len(np.unique(detected_injs_ids))/len(injs))
 	print("\t# of injections: ", len(injs))
 	
-	injected_ids, _ = check_triggers(LLs_times, injs, len_batch *0.97 )
+	injected_ids, _ = check_triggers(LLs_times, injs, len_batch *2. ) #here we find the ids of the injections performed
 
 		#plotting: the injections are in red
 	plt.figure()
@@ -173,24 +187,34 @@ def gather_LLs(infolder, injs):
 	plt.scatter(red_data[~injs_bool_vector,0], red_data[~injs_bool_vector,1], c = 'b', cmap = 'cool', zorder = 0)
 		#plotting triggers
 	plt.scatter(red_data[triggers_ids,0], red_data[triggers_ids,1], c = 'y', marker = 'x', cmap = 'cool', zorder =10)
-
+	plt.xlabel('PCA 1')
+	plt.ylabel('PCA 2')
 
 		#plotting parameters
 	theta_injs = [inj['theta'] for inj in injs]
 	theta_injs = np.column_stack(theta_injs).T #(N_injs, 7)
-	print(injs[0]['theta'].shape,theta_injs.shape)
-	try:
-		SNR_injs = np.array([inj['SNR'] for inj in injs])
-	except:
-		SNR_injs = np.array([  np.dot(inj['WF'],inj['WF'])/1e-40 for inj in injs])
+	SNR_injs = np.array([inj['SNR'] for inj in injs])
+	D_eff = np.array([inj['D_eff'] for inj in injs])
 	
 	plt.figure()
 	plt.hist(SNR_injs)
 	plt.hist(SNR_injs[detected_injs_ids], label = 'detected')
+	plt.legend()
 
 	plt.figure()
-	plt.scatter(theta_injs[:,0]+theta_injs[:,1], theta_injs[:,4], c= 'b')
-	plt.scatter(theta_injs[detected_injs_ids,0]+theta_injs[detected_injs_ids,1], theta_injs[detected_injs_ids,4], marker = 'x', c = 'r')
+	plt.title("Injections performed")
+	plt.scatter(mchirp(theta_injs[:,0],theta_injs[:,1]), D_eff, c= 'b')
+	plt.scatter(mchirp(theta_injs[detected_injs_ids,0],theta_injs[detected_injs_ids,1]), D_eff[detected_injs_ids], marker = 'x', c = 'r')
+	plt.xlabel(r'$\mathcal{M}_{c} (M_\odot)$')
+	plt.ylabel(r'$D_{eff} (Mpc)$')
+	
+	plt.figure()
+	plt.title("Injections performed")
+	plt.scatter(SNR_injs, D_eff, c= 'b')
+	plt.scatter(SNR_injs[detected_injs_ids], D_eff[detected_injs_ids], marker = 'x', c = 'r')
+	plt.xlabel(r'SNR')
+	plt.ylabel(r'$D_{eff} (Mpc)$')
+
 
 	#np.savetxt('data/red_data.dat', np.concatenate([red_data, injs_bool_vector[:,None]] , axis = 1))
 
