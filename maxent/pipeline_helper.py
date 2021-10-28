@@ -212,18 +212,23 @@ def split_data(indata, outfolder, srate, start_GPS, T_batch, T_overlap, injectio
 	srate = float(srate)	
 	N_batch = int(T_batch*srate)
 	overlap = int(T_overlap*srate)
-
-	data *=1e18 #crucial for emd
+	
+	if do_EMD:
+		data *=1e18 #crucial for emd
 	
 	n =0 #id for the current start batch
 	file_list = []
-	while n + N_batch <= len(data) :
+
+	if N_batch > len(data): #to avoid weird things...
+		N_batch = len(data)
+
+	while n + N_batch <= len(data):
 		data_batch = data[n:n+N_batch]
 		
 		if do_EMD:
-			filename = outfolder+"{}-{}Hz-{}-{}.emd.dat".format(prefix, srate, start_GPS + n/srate, N_batch/srate)
+			filename = outfolder+"{}-{}Hz-{}-{}.emd.dat".format(prefix, srate, start_GPS + n/srate, round(N_batch/srate, 1))
 		else:
-			filename = outfolder+"{}-{}Hz-{}-{}.dat".format(prefix, srate, start_GPS + n/srate, N_batch/srate)
+			filename = outfolder+"{}-{}Hz-{}-{}.dat".format(prefix, srate, start_GPS + n/srate, round(N_batch/srate, 1))
 		header = "#emd data\n#GPS start time: {}\n#srate: {}\n#lenght: {}s".format(start_GPS + n/srate,srate, N_batch/srate)
 		
 		if do_EMD:
@@ -260,19 +265,19 @@ def plot_PSD_imf(imf, data, srate, WF = None, title = None, folder = '.'):
 	
 		#spectrum of data
 	M.solve(data, method = 'Fast', optimisation_method = 'CAT')
-	spec_data, f = M.spectrum(1/srate)
+	f, spec_data = M.spectrum(1/srate)
 	ax.loglog(f[:len(data)//2], spec_data[:len(data)//2], label= "data")
 
 	if WF is not None:
 		M.solve(WF, method = "standard")
-		spec_WF, f = M.spectrum(1/srate)
+		f, spec_WF = M.spectrum(1/srate)
 		ax.loglog(f[:len(data)//2], spec_WF[:len(data)//2], label= "WF")
 
 	if imf is not None:
 		for i in range(imf.shape[1]):
 			print("EMD component {}/{}".format(i+1 ,imf.shape[1]))
 			M.solve(imf[:,i], method = 'Standard', optimisation_method = 'CAT')
-			spec, f= M.spectrum(1/srate)
+			f, spec= M.spectrum(1/srate)
 			ax.loglog(f[:len(data)//2], spec[:len(data)//2], label= "EMD {}".format(i+1))
 
 	plt.legend()
