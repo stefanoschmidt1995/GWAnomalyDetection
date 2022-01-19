@@ -5,6 +5,7 @@ More info on this can be found at: https://computing.docs.ligo.org/guide/data/#c
 
 The parameter ***desired_segment_time*** can be changed to specify how long each segment should be.\
 The parameter ***data_times*** can be changed to whatever range of time you want. If you want a time outside of the O3b run the .csv file that ***safe_channels*** reads from must also be changed accordingly.
+The .csv file of safe channels can be found at https://dcc.ligo.org/T2000277
 
 The ouput files are relatively larger in memory (~23.6GB for 30 minutes of data with 0.2s segments and 0.5 overlap).\
 When a definitive list of features has been determined this script should be merged with ***aux_fracdim.py*** (and scripts for subsequent features) to preserve disk space.
