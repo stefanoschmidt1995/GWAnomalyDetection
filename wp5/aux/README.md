@@ -16,4 +16,10 @@ This file reads in the segmented data made using ***aux_segments.py*** and compu
 The parameter ***segs_per_run*** has to be carefully chosen to avoid an error with the kernel initialization, it depends on the number of channels and the decimate factor ***dec***.
 The current value is the highest value it can be without causing the error.
 
-***TODO: timing***
+## Timing
+1021 auxiliary channels (Safe ISI channels)
+* aux_clean-no_event  (30 minutes of data) in 26 minutes, 19 seconds
+* aux_clean-event     (30 minutes of data) in 26 minutes, 05 seconds
+* aux_dq-issues-1     (30 minutes of data) in 25 minutes, 50 seconds
+* aux_dq-issues-2     (10 minutes of data) in 08 minutes, 42 seconds
+* aux_dq-issues-3     (20 minutes of data) in 16 minutes, 46 seconds
