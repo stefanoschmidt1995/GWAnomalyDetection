@@ -15,7 +15,15 @@ This file reads in the segmented data made using ***aux_segments.py*** and compu
 
 
 ## Timing
-1021 auxiliary channels (Safe ISI channels), with a decimate factor of **min(32, N/2)**.
+1021 auxiliary channels (Safe ISI channels).
+* 256 Hz : 60 channels
+* 512 Hz : 318 channels
+* 1024 Hz : 167 channels
+* 2048 Hz : 304 channels
+* 4096 Hz : 172 channels
+
+
+With a decimate factor of **min(32, N/2)**.
 * aux_clean-no_event  (30 minutes of data) in 26 minutes, 19 seconds
 * aux_clean-event     (30 minutes of data) in 26 minutes, 05 seconds
 * aux_dq-issues-1     (30 minutes of data) in 25 minutes, 50 seconds
