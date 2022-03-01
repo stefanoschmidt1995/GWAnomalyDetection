@@ -1,6 +1,43 @@
+### get_fd_data.py
+Can be used from command line
+```
+usage: get_fd_data.py [-h] (--var | --anam) [-c CHANNEL] [-w] [-o OVERLAP]
+                      [-d DEC] [-g {0,1,2,3}] [-f OUTDIR]
+                      start end segtime
+
+positional arguments:
+  start                 GPS Start time
+  end                   GPS End time
+  segtime               Length of segments in seconds
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --var                 Use the VAR estimator
+  --anam                Use the ANAM estimator
+  -c CHANNEL, --channel CHANNEL
+                        Channel to get strain data from, pass "open{ifo}" to
+                        use open data
+  -w, --whiten          Whiten strain data
+  -o OVERLAP, --overlap OVERLAP
+                        Fraction of segment time to overlap with previous
+                        segment
+  -d DEC, --dec DEC     Decimate factor for the fractal dimension estimator
+  -g {0,1,2,3}, --gpu {0,1,2,3}
+                        GPU to use
+  -f OUTDIR, --outdir OUTDIR
+                        Output directory
+```
+Alternatively by importing ***get_fd()*** from get_fd_data.py in another script:
+```
+from get_fd_data import get_fd
+
+...
+
+get_fdf(strain_channel, whiten, t_start, t_end, segment_time, overlap, estimator, decimate_factor, gpu, out_dir)
+```
+
+
 ### Timing (1 hour of data)
-
-
 
 | Algorithm     | Total Time (s) | Data Downloading Time (s) | Calculation Time (s) |
 | :---          |     :----:     |            :---:          |         :---:        |
