@@ -16,10 +16,40 @@ import mlgw.GW_generator as gen
 
 import emd #nice package for emd: pip install emd
 from PyEMD import EMD #This package is way better than the other!!
+import h5py
+import warnings
 
 from gwpy.timeseries import TimeSeries
 
 ################
+
+def load_FD(infile, keys = 'Strain'):
+	f = h5py.File(infile, 'r')
+	
+	if isinstance(keys, str): keys = [keys]
+	data_list = []
+	
+	try:
+		GPS_start, GPS_end = np.array(f['meta']['Start GPS']), np.array(f['meta']['End GPS'])
+	except KeyError:
+		GPS_start, GPS_end = 0, 0
+	
+	for k in keys:
+		#print('\tOverlap: ',np.array(f['meta']['Overlap']))
+		try:
+			data_list.append(f['data'][k])
+		except KeyError:
+			pass
+
+	if len(data_list) ==0:
+		warnings.warn("Unable to get data: did you input a valid hd5 file? Did you set the right key?")
+		return None
+	data = np.stack(data_list, axis = 1)
+	
+	return data, GPS_start, GPS_end
+	
+	
+
 def load_emd(infile, data = None, times = None, WF = None):
 	imf = np.loadtxt(infile)
 	if data is None and times is None and WF is None:

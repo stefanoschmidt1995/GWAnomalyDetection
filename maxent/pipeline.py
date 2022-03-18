@@ -68,7 +68,7 @@ def AnomalyDetection_pipeline(data, srate, T_train, N_step, outfile = None, plot
 		ax_LLseries.set_yscale('log')
 
 			#PSD plot
-		fig_PSDseries = plt.figure(2)
+		fig_PSDseries = plt.figure()
 		plt.title("PSD of {}s of training data".format(T_train))
 		ax_PSDseries  = fig_PSDseries.add_subplot(111)
 		ax_PSDseries.set_ylabel("PSD")
@@ -86,7 +86,7 @@ def AnomalyDetection_pipeline(data, srate, T_train, N_step, outfile = None, plot
 		times_batch = times[id_:id_+N_step+1]
 		data_batch = data[id_:id_+N_step+1] #data to predict
 	
-		forecast_basis = data[id_-M.get_p():id_] #batch of data that are the basis for forecasting
+		forecast_basis = data[id_-max(M.get_p(),1):id_] #batch of data that are the basis for forecasting
 		predictions = M.forecast(forecast_basis, N_step+1, Np) #(Np, N_step)
 		
 			#computing LL	
@@ -222,6 +222,7 @@ def gather_LLs(infolder, injs, LL_treshold = -4):
 
 def detect_outliers(LLs_timeseries, GPS_timeseries, threshold = 4, K_PCA = 2):
 	"Detect eventual outliers with PCA and launch triggers at the outliers found."
+	
 	model = PCA_model()
 	model.fit_model(LLs_timeseries, K = K_PCA) #(N,D)
 	
@@ -241,7 +242,7 @@ def detect_outliers(LLs_timeseries, GPS_timeseries, threshold = 4, K_PCA = 2):
 	
 	ids_scores = np.where(scores>threshold)
 	
-	if False:
+	if True:
 		plt.scatter(red_data[:,0],red_data[:,1], c= scores, zorder = 1)
 		plt.colorbar()
 		plt.scatter(red_data[ids_scores,0],red_data[ids_scores,1], c = 'r', zorder = 10)
@@ -310,11 +311,15 @@ def detect_outliers_old(infile, injs = None):
 		
 		plt.figure()
 		plt.scatter(t_start, red_data[:,0], c = colors, cmap = 'cool', zorder = 0)
-		plt.xlabel("1st PCA")
+		plt.xlabel("GPS time")
+		plt.ylabel("1st PCA")
 
 		plt.figure()
 		plt.scatter(t_start, red_data[:,1], c = colors, cmap = 'cool', zorder = 0)	
-		plt.xlabel("2nd PCA")
+		plt.ylabel("2nd PCA")
+		plt.xlabel("GPS time")
+	
+	return t_start, LL_timeseries
 
 def check_triggers(trigger_times, injs, threshold):
 	"Given a list of GPS times for some triggers, it computes whether each trigger time matches any injection time within a threshold"
