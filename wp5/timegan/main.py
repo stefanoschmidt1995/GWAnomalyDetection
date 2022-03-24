@@ -372,10 +372,12 @@ if __name__ == '__main__':
     pathlib.Path(parameters['save_path']+'/').mkdir(parents=True, exist_ok=True) 
     
     # list of training file locations (coloured guassian noise)
+    # prefix for CIT: /home/robin.vanderlaag/wp5/strain_fractals/TimeGAN/
     train_files = glob.glob('./synth_data/FD/*/*Synthetic_Data*.hdf5')
     parameters['training_data'] = train_files
     
     # list of test file locations (real L1 data)
+    # prefix for CIT: /home/robin.vanderlaag/wp5/strain_fractals/TimeGAN/
     test_files = ['./1262476261-1262481170/VAR-L1-multi.hdf5',
                   './1262491498-1262500158/VAR-L1-multi.hdf5',
                   './1262503380-1262508582/VAR-L1-multi.hdf5',
