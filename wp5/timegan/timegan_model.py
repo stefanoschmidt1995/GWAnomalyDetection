@@ -5,11 +5,13 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3"
 import torch
 import torch.nn as nn
 
+from loss_funcs import torch_wasserstein_distance
 # dict of loss functions that can be used by network, more can be added
 _LOSS_FUNCS = {
     'mse': nn.MSELoss(),
     'mae': nn.L1Loss(),
-    'bcewithlogits': nn.BCEWithLogitsLoss()
+    'bcewithlogits': nn.BCEWithLogitsLoss(),
+    'wd': torch_wasserstein_distance
 }
 
 class Embedder(nn.Module):
@@ -67,10 +69,12 @@ class Embedder(nn.Module):
         
     def forward(self, X, T):
         # ignore padding
+        
         X_packed = nn.utils.rnn.pack_padded_sequence(input=X,
                                                      lengths=T,
                                                      batch_first=True,
                                                      enforce_sorted=False)
+        
         H_o, H_t = self.emb_rnn(X_packed)
         # repad
         H_o, T = nn.utils.rnn.pad_packed_sequence(sequence=H_o, 
