@@ -18,13 +18,12 @@ def _torch_cdf_distance(tensor_a,tensor_b):
     output: cdf_loss which the computed distance between the tensors.
     
     #Note: this function yields an difference of \approx 10^-9
-    """
-    """
+    
     Updated for batch support | 29/03/2022
     Updated for multivariate time series support | 29/03/2022
         
         Expects tensor_a and tensor_b to be of shape: (batch_size, segment_length, n_features),
-        thus a single batch of 10 time series with lengths of 12 would have the shape: (1, 12, 10)
+            Example: a single batch of 10 time series with lengths of 12 should have shape=(1, 12, 10)
     """
     batch_size = tensor_a.shape[0]
     assert tensor_a.shape == tensor_b.shape, 'tensor_a and tensor_b have different shape'
