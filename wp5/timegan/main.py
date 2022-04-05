@@ -6,7 +6,7 @@ from timegan_model import TimeGAN
 
 import torch
 import torch.nn as nn
-#from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -157,7 +157,7 @@ def rescale(data, d_min, d_max, norm):
 
 
     
-def embedding_training(model, dataloader, emb_opt, rec_opt, parameters, device):
+def embedding_training(model, dataloader, emb_opt, rec_opt, parameters, device, writer=None):
     pbar = trange(parameters['emb_epochs'], desc=f"Epoch: 0, Loss: {0.0:.4f}")
     model.train()
     for epoch in pbar:
@@ -172,10 +172,16 @@ def embedding_training(model, dataloader, emb_opt, rec_opt, parameters, device):
             
             emb_opt.step()
             rec_opt.step()
-        
-        pbar.set_description(f"Epoch: {epoch}, Loss: {np.sqrt(E_loss_T0.item()):.4f}")
+            
+        loss = np.sqrt(E_loss_T0.item())
+        pbar.set_description(f"Epoch: {epoch}, Loss: {loss:.4f}")
+        if writer:
+            writer.add_scalar('Loss/Embedding', loss, epoch)
+            writer.flush()
+            
+            
 
-def supervisor_trainer(model, dataloader, sup_opt, parameters, device):
+def supervisor_trainer(model, dataloader, sup_opt, parameters, device, writer=None):
     pbar = trange(parameters['sup_epochs'], desc=f"Epoch: 0, Loss: {0.0:.4f}")
     model.train()
     for epoch in pbar:
@@ -189,9 +195,13 @@ def supervisor_trainer(model, dataloader, sup_opt, parameters, device):
             
             sup_opt.step()
         
-        pbar.set_description(f"Epoch: {epoch}, Loss: {np.sqrt(G_loss_S.item()):.4f}")
+        loss = np.sqrt(G_loss_S.item())
+        pbar.set_description(f"Epoch: {epoch}, Loss: {loss:.4f}")
+        if writer:
+            writer.add_scalar('Loss/Supervisor', loss, epoch)
+            writer.flush()
 
-def joint_trainer(model, dataloader, emb_opt, rec_opt, gen_opt, sup_opt, dis_opt, parameters, device):
+def joint_trainer_old(model, dataloader, emb_opt, rec_opt, gen_opt, sup_opt, dis_opt, parameters, device, writer=None):
     pbar = trange(parameters['dis_epochs'], desc=f"Epoch: 0, E_loss: {0.0:.4f}, G_loss: {0.0:.4f}, D_loss: {0.0:.4f}")
     model.train()
     for epoch in pbar:
@@ -243,12 +253,83 @@ def joint_trainer(model, dataloader, emb_opt, rec_opt, gen_opt, sup_opt, dis_opt
                 D_loss.backward()
                 
                 dis_opt.step()
-    
-        pbar.set_description(f"Epoch: {epoch}, E_loss: {np.sqrt(E_loss.item()):.4f}, G_loss: {G_loss.item():.4f}, D_loss: {D_loss.item():.4f}")
+        
+        E_loss = np.sqrt(E_loss.item())
+        pbar.set_description(f"Epoch: {epoch}, E_loss: {E_loss:.4f}, G_loss: {G_loss.item():.4f}, D_loss: {D_loss.item():.4f}")
+        if writer:
+            writer.add_scalar('Joint/Embedding_Loss', E_loss, epoch)
+            writer.add_scalar('Joint/Generator_Loss', G_loss.item(), epoch)
+            writer.add_scalar('Joint/Discriminator_Loss', D_loss.item(), epoch)
+            writer.flush()
+            
+def joint_trainer(model, dataloader, emb_opt, rec_opt, gen_opt, sup_opt, dis_opt, parameters, device, writer=None):
+    pbar = trange(parameters['dis_epochs'], desc=f"Epoch: 0, E_loss: {0.0:.4f}, G_loss: {0.0:.4f}, D_loss: {0.0:.4f}")
+    model.train()
+    for epoch in pbar:
+        # Generator training (twice more than discriminator training)
+        for _ in range(2):
+            for X, T in dataloader:
+                X = X.to(device)
+                # T = T.to(device)
+                
+                Z = _random_generator(shape=(len(T), parameters['max_seq_len'], parameters['z_dim']),
+                                      norm=parameters['norm_data'], 
+                                      rand_like_tf=parameters['rand_like_tf'],
+                                      T=T)
+                Z = Z.to(device)
+                
+                # Train generator
+                model.zero_grad()
+                
+                G_loss = model(X, T, Z, "generator")
+                G_loss.backward()
+                
+                gen_opt.step()
+                sup_opt.step()
+            
+            for X, T in dataloader:
+                X = X.to(device)
+                # Train embedder
+                model.zero_grad()
+
+                E_loss, _, E_loss_T0 = model(X, T, None, obj="autoencoder")
+                E_loss.backward()
+
+                emb_opt.step()
+                rec_opt.step()
+        
+        # Discriminator Training
+        for X, T in dataloader:
+            X = X.to(device)
+            # T = T.to(device)
+            
+            Z = _random_generator(shape=(len(T), parameters['max_seq_len'], parameters['z_dim']),
+                                  norm=parameters['norm_data'], 
+                                  rand_like_tf=parameters['rand_like_tf'],
+                                  T=T)
+            Z = Z.to(device)
+            
+            model.zero_grad()
+            
+            D_loss = model(X, T, Z, "discriminator")
+            if D_loss > parameters['dis_threshold']:
+                D_loss.backward()
+                
+                dis_opt.step()
+        
+        E_loss = np.sqrt(E_loss.item())
+        pbar.set_description(f"Epoch: {epoch}, E_loss: {E_loss:.4f}, G_loss: {G_loss.item():.4f}, D_loss: {D_loss.item():.4f}")
+        if writer:
+            writer.add_scalar('Joint/Embedding_Loss', E_loss, epoch)
+            writer.add_scalar('Joint/Generator_Loss', G_loss.item(), epoch)
+            writer.add_scalar('Joint/Discriminator_Loss', D_loss.item(), epoch)
+            writer.flush()
                 
     
 
 def train_timegan(model, data, time, parameters, device):
+    
+    writer = SummaryWriter(parameters['save_path'])
     
     dataset = TimeGAN_Dataset(data, time)
     dataloader = torch.utils.data.DataLoader(dataset=dataset,
@@ -273,19 +354,21 @@ def train_timegan(model, data, time, parameters, device):
     
     # 1. Embedding network training
     print('Start Embedding Network Training')
-    embedding_training(model, dataloader, emb_opt, rec_opt, parameters, device)
+    embedding_training(model, dataloader, emb_opt, rec_opt, parameters, device, writer)
     
     # 2. Training only with supervised loss
     print('Start Training with Supervised Loss Only')
-    supervisor_trainer(model, dataloader, sup_opt, parameters, device)
+    supervisor_trainer(model, dataloader, sup_opt, parameters, device, writer)
     
     # 3. Joint Training
     print('Start Joint Training')
-    joint_trainer(model, dataloader, emb_opt, rec_opt, gen_opt, sup_opt, dis_opt, parameters, device)
+    joint_trainer(model, dataloader, emb_opt, rec_opt, gen_opt, sup_opt, dis_opt, parameters, device, writer)
     
     # Save Trained Model
     torch.save({'model':model.state_dict(), 'parameters':parameters}, f"{parameters['save_path']}/model.pt")
     print(f"Model saved at: {parameters['save_path']}/model.pt")
+    
+    writer.close()
 
 
 def generate_synthetic_data(model, T, device, file=None, parameters=None):
@@ -310,7 +393,7 @@ def generate_synthetic_data(model, T, device, file=None, parameters=None):
     return generated_data
     
 
-def score_test(model, data, time, device, file=None, parameters=None):
+def score_test(model, data, time, device, file=None, parameters=None, repeats=10):
     if file:
         parameters = torch.load(file)['parameters']
         model.load_state_dict(torch.load(file)['model'])
@@ -323,24 +406,45 @@ def score_test(model, data, time, device, file=None, parameters=None):
                                              shuffle=False,
                                              num_workers=3)
     anom_scores = np.zeros(shape=(len(dataset),3))
+    anom_scores_wd = np.zeros(shape=(len(dataset),3))
     
     model.eval()
     with torch.no_grad():
-        for i, (X, T) in enumerate(dataloader):
+        for i, (X, T) in tqdm(enumerate(dataloader), total=len(dataloader), desc='Anomaly Scores'):
             X = X.to(device)
             # T = T.to(device)
+            A_h_list = []
+            A_d_list = []
+            A_de_list = []
+            A_h_wd_list = []
+            A_d_wd_list = []
+            A_de_wd_list = []
+            for _ in range(repeats):
+                
+                Z = _random_generator(shape=(len(T), parameters['max_seq_len'], parameters['z_dim']),
+                                      norm=parameters['norm_data'], 
+                                      rand_like_tf=parameters['rand_like_tf'],
+                                      T=T)
+                Z = Z.to(device)
+
+                A_h, A_d, A_de, A_h_wd, A_d_wd, A_de_wd = model(X, T, Z, 'score')
+                
+                A_h_list.append(A_h)
+                A_d_list.append(A_d)
+                A_de_list.append(A_de)
+                
+                A_h_wd_list.append(A_h_wd)
+                A_d_wd_list.append(A_d_wd)
+                A_de_wd_list.append(A_de_wd)
             
-            Z = _random_generator(shape=(len(T), parameters['max_seq_len'], parameters['z_dim']),
-                                  norm=parameters['norm_data'], 
-                                  rand_like_tf=parameters['rand_like_tf'],
-                                  T=T)
-            Z = Z.to(device)
+            A_h = np.mean(np.asarray(A_h_list), axis=0)
+            A_d = np.mean(np.asarray(A_d_list), axis=0)
+            A_de = np.mean(np.asarray(A_de_list), axis=0)
             
-            A_h, A_d, A_de = model(X, T, Z, 'score')
             anom_scores[i*parameters['batch_size']:i*parameters['batch_size']+len(A_h)] = np.array([A_h, A_d, A_de]).T
-    
+            anom_scores_wd[i*parameters['batch_size']:i*parameters['batch_size']+len(A_h_wd)] = np.array([A_h_wd, A_d_wd, A_de_wd]).T
     #avg_anom_scores = np.array([np.mean(anom_scores[i:i+parameters['max_seq_len']], axis=0) for i in range(anom_scores.shape[0]-parameters['max_seq_len'])])
-    return anom_scores
+    return anom_scores, anom_scores_wd
     
 
 
@@ -348,17 +452,17 @@ def score_test(model, data, time, device, file=None, parameters=None):
 
 if __name__ == '__main__':
     parameters = {
-        'save_path': "trained_models/testgan_synth",
-        'seed': 832022, # random seed to ensuree determinism
+        'save_path': "trained_models/test_joint_2",
+        'seed': 832022, # random seed to ensure determinism
         'norm_data': (0, 1), # orginal code uses sigmoid for output of X_tilde, => X\in[0,1] is assumed
-        'test_split': 0, # TODO: !temp! no validition done
-        'loss_fn_ers': "mse", # loss function for the embedder, recovery, and supervisor | see _LOSS_FUNCS in timegan_model.py
+        'test_split': 0.9, # TODO: !temp! no validition done
+        'loss_fn_ers': "wd", # loss function for the embedder, recovery, and supervisor | see _LOSS_FUNCS in timegan_model.py
         'loss_fn_gd': "bcewithlogits", # loss function for the generator and discriminator | see _LOSS_FUNCS in timegan_model.py
         'learning_rate': 0.001,
         'batch_size': 128,
-        'emb_epochs': 25, # number of epochs for the embedding network training
-        'sup_epochs': 25, # number of epochs for the supervised loss training
-        'dis_epochs': 25, # number of epochs for the joint
+        'emb_epochs': 500, # number of epochs for the embedding network training
+        'sup_epochs': 500, # number of epochs for the supervised loss training
+        'dis_epochs': 500, # number of epochs for the joint training
         'dis_threshold': 0.15, # discriminator loss threshhold for backpropagation [0,1]
         'max_seq_len': 12, # (max) length of each input sequence
         'module': "lstm", # type of module to use in the timegan | ['gru','lstm']
@@ -389,7 +493,8 @@ if __name__ == '__main__':
     
     # !! change appropriatly to free device | order is the same as nvidia-smi
     device = torch.device('cuda', 3)
-    
+    print(torch.__version__)
+    print(torch.cuda.is_available())
     if torch.cuda.is_available():
         torch.cuda.manual_seed(parameters['seed'])
         torch.backends.cudnn.deterministic = True
@@ -420,7 +525,7 @@ if __name__ == '__main__':
         X_train, T_train = shuffle(data, times, random_state=parameters['seed'])
         X_val, T_val = None, None
         
-    
+    print(f'Training Dataset shape: {X_train.shape}.')
     model = TimeGAN(parameters)
     model.to(device)
     
@@ -446,7 +551,7 @@ if __name__ == '__main__':
                                                           parameters['max_seq_len'], 
                                                           parameters['norm_data'], 
                                                           min_max=(1,2)) # min=1, max=2 for the fractal dimension of curves in R^2
-    anom_scores = score_test(model, data, times, device, parameters=parameters)
+    anom_scores, anom_scores_wd = score_test(model, data, times, device, parameters=parameters, repeats=1000)
     
     rescale_pars = {'d_min':d_min, 
                     'd_max':d_max, 
@@ -455,5 +560,7 @@ if __name__ == '__main__':
                         data=rescale(data, **rescale_pars),
                         GPSTimes=GPSTimes,
                         anom_scores=anom_scores,
+                        anom_scores_wd=anom_scores_wd,
                         seq_len=parameters['max_seq_len'])
+    
     
