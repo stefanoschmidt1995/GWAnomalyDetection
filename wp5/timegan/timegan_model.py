@@ -460,8 +460,8 @@ class TimeGAN(nn.Module):
         Y_fake_e = self.discriminator(E_hat, T)  
         
         D_loss_real = self.discriminator.loss(Y_real, torch.ones_like(Y_real))
-        D_loss_fake = self.discriminator.loss(Y_fake, torch.ones_like(Y_fake))
-        D_loss_fake_e = self.discriminator.loss(Y_fake_e, torch.ones_like(Y_fake_e))
+        D_loss_fake = self.discriminator.loss(Y_fake, torch.zeros_like(Y_fake))
+        D_loss_fake_e = self.discriminator.loss(Y_fake_e, torch.zeros_like(Y_fake_e))
         
         
         D_loss = D_loss_real + D_loss_fake + self.gamma*D_loss_fake_e
@@ -494,6 +494,35 @@ class TimeGAN(nn.Module):
         A_de = mse(Y_real, Y_fake_e).mean(dim=1)
         
         return A_h.cpu().detach(), A_d.cpu().detach(), A_de.cpu().detach()
+    
+    def _anomaly_score_wd(self, X, T, Z):
+        was_dist = _LOSS_FUNCS['wd']
+        mse = nn.MSELoss(reduction='none')
+        
+        H = self.embedder(X, T).detach()
+        
+        E_hat = self.generator(Z, T)
+        H_hat = self.supervisor(E_hat, T)
+        
+        Y_real = self.discriminator(H, T)#.unsqueeze(dim=-1)
+        Y_fake = self.discriminator(H_hat, T)#.unsqueeze(dim=-1)
+        Y_fake_e = self.discriminator(E_hat, T)#.unsqueeze(dim=-1)
+        
+        ## temp mse as well for testing
+        A_h_mse = mse(H, H_hat).mean(dim=(1,2))
+        A_d_mse = mse(Y_real, Y_fake).mean(dim=1)
+        A_de_mse = mse(Y_real, Y_fake_e).mean(dim=1)
+        
+        Y_real = Y_real.unsqueeze(dim=-1)
+        Y_fake = Y_fake.unsqueeze(dim=-1)
+        Y_fake_e = Y_fake_e.unsqueeze(dim=-1)
+        
+        # anomaly score(s) based on the mse of the latent representations and the output of the discriminator
+        A_h = was_dist(H, H_hat, None)
+        A_d = was_dist(Y_real, Y_fake, None)
+        A_de = was_dist(Y_real, Y_fake_e, None)
+        
+        return A_h_mse.cpu().detach(), A_d_mse.cpu().detach(), A_de_mse.cpu().detach(), A_h.cpu().detach(), A_d.cpu().detach(), A_de.cpu().detach()
         
     def forward(self, X, T, Z, obj):
         if obj == 'autoencoder':
@@ -508,7 +537,8 @@ class TimeGAN(nn.Module):
             X_hat = self._inference(Z, T)
             return X_hat.cpu().detach().numpy()
         elif obj == 'score':
-            A_h, A_d, A_de = self._anomaly_score(X, T, Z)
-            return A_h.numpy(), A_d.numpy(), A_de.numpy()
+            #A_h, A_d, A_de = self._anomaly_score(X, T, Z)
+            A_h, A_d, A_de, A_h_wd, A_d_wd, A_de_wd = self._anomaly_score_wd(X, T, Z)
+            return A_h.numpy(), A_d.numpy(), A_de.numpy(), A_h_wd.numpy(), A_d_wd.numpy(), A_de_wd.numpy()
         
         return loss
