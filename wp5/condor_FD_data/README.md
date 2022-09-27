@@ -1,8 +1,8 @@
 # Python scripts for the data fetching and FD computing process (HTCondor)
 
 ### `condor_setup.py`
-Sets up `dag`, `sub`, and `sh` files for submitting to condor.
-As well as `.npy` files for the gpstimes of each job
+Sets up `dag`, `sub`, and `sh` files for submitting to condor, as well as `.npy` files for the gpstimes of each job.
+Note that `proxy_path` should be changed to your own X509 proxy certificate (see: https://computing.docs.ligo.org/guide/condor/data/)
 
 
 ### `condor_fd.py`
