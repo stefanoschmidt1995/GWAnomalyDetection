@@ -271,8 +271,8 @@ def compute_fd(data_queue, n_senders, times, args):
                         width = args.width
                     
                     # see if data can be precisly segmented without remainder
-                    rem = data.shape[1] % sr*seg_length
-                    if int((data.shape[1]-rem) // sr*seg_length) & 1 == 0: # slice awaythe remaining end part
+                    rem = data.shape[1] % (sr*seg_length)
+                    if int((data.shape[1]-rem) // (sr*seg_length)) & 1 == 0: # slice away the remaining end part
                         segments = segmentize(data[:,int(rem+sr*seg_length//2):-int(sr*seg_length//2 + (sr*seg_length%2>0))],
                                               int(sr*seg_length), int(sr*(seg_length-stride)))
                     else: # data can be precisly segmented
