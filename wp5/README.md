@@ -22,5 +22,12 @@ Most relevant channels:
 
 	IFO:LSC-PRCL_IN1_DQ 16384 safe clean
 	IFO:LSC-PRCL_OUT_DQ 16384 safe clean
+    
+### O3 data quality flags
+
+In [this](https://wiki.ligo.org/DetChar/DataQuality/O3Flags) document we can find data quality flags and science segment definitions. From here we can get the witness channels of sever glitches:
+
+- Sever whistle from L1: [here](https://ldas-jobs.ligo-la.caltech.edu/~detchar/hveto/day/20200106/1262304018-1262390418/) we can find the witness channel as ranked by Hveto.
+-Sever scattering from L1: #FIXME
 
 
