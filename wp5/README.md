@@ -31,3 +31,14 @@ In [this](https://wiki.ligo.org/DetChar/DataQuality/O3Flags) document we can fin
 -Sever scattering from L1: #FIXME
 
 
+# Robin's data
+
+
+`/home/robin.vanderlaag/wp5/strain_fractals/condor_data/labeled_anomalies.npy`: channels and times that whitening failed.
+
+`/home/robin.vanderlaag/wp5/strain_fractals/condor_data/check_const_channels.py`: script to check failing whitening.
+
+`/home/robin.vanderlaag/wp5/strain_fractals/condor_data/res_dir/FD_all_n=3584_2022-11-17.hdf5`: fractal data
+
+`/scratch/robin.vanderlaag/temp.copy.of.O3.raw.frames/O3`: raw frame in disk. How do we delete?
+
