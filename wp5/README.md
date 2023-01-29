@@ -42,3 +42,4 @@ In [this](https://wiki.ligo.org/DetChar/DataQuality/O3Flags) document we can fin
 
 `/scratch/robin.vanderlaag/temp.copy.of.O3.raw.frames/O3`: raw frame in disk. How do we delete?
 
+`/dev/shm/kafka/L1_O3ReplayMDC/`: 1s replay data
